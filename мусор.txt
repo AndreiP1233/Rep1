@@ -1,0 +1,162 @@
+    # today = datetime.date.today()
+    # date_today = datetime.datetime.strptime(f"{today.month}.{today.day}", "%m.%d")
+
+
+# @router.message(Command('listreminds'))
+# async def list_reminds(message: Message):
+#     jobs = scheduler.get_jobs()
+#     if not jobs:
+#         await message.answer('Нет установленных напоминаний')
+#     else:
+#         reminders = []
+#         for job in jobs:
+#             reminders.append(f'Напоминание установлено на {job.trigger.run_date}.')
+#         await message.answer('\n'.join(reminders))
+
+
+
+@router.message(Command('setremind'))
+async def set_remind(message: Message, state: FSMContext):
+    person = await process_people()
+    birthday_str = f"{person[2]}.{datetime.datetime.now().year}"
+    birthday_date = datetime.datetime.strptime(birthday_str, "%d.%m.%Y")
+
+    if birthday_date < datetime.datetime.now():
+        birthday_date = birthday_date.replace(year=birthday_date.year + 1)
+    
+    try:
+        scheduler.add_job(
+            functools.partial(send_remind, chat_id=message.chat.id, person=person), 
+            DateTrigger(run_date=birthday_date)
+        )
+        await message.answer(f'Напоминание установлено!')
+    except Exception as e:
+        await message.answer(f'Ошибка установки напоминания: {str(e)}')
+
+    scheduler.start()
+
+@router.message()
+async def send_remind(chat_id, person):
+    person = await process_people()
+    await bot.send_message(chat_id, f'Сегодня день рождения у {person[0]}!')
+
+
+#Напоминание за неделю до дня рождения
+async def set_remind_week_before(message: Message, state: FSMContext):
+    person = await process_people()
+    birthday_str = f"{person[2]}.{datetime.datetime.now().year}"
+    birthday_week_before_date = datetime.datetime.strptime(birthday_str, "%d.%m.%Y")-timedelta(weeks=1)
+
+    if birthday_week_before_date < datetime.datetime.now():
+        birthday_week_before_date = birthday_week_before_date.replace(year=birthday_week_before_date.year + 1)
+    
+    try:
+        scheduler.add_job(
+            functools.partial(send_remind_week_before, chat_id=message.chat.id, person=person), 
+            DateTrigger(run_date=birthday_week_before_date)
+        )
+        await message.answer(f'Напоминание установлено!')
+    except Exception as e:
+        await message.answer(f'Ошибка установки напоминания: {str(e)}')
+
+    scheduler.start()
+
+@router.message()
+async def send_remind_week_before(chat_id, person):
+    person = await process_people()
+    await bot.send_message(chat_id, f'Через неделю день рождения у {person[0]}! Не забудьте купить подарок)')
+
+#Напоминание за день до дня рождения
+async def set_remind_day_before(message: Message, state: FSMContext):
+    person = await process_people()
+    birthday_str = f"{person[2]}.{datetime.datetime.now().year}"
+    birthday_day_before_date = datetime.datetime.strptime(birthday_str, "%d.%m.%Y")-timedelta(days=1)
+
+    if birthday_day_before_date < datetime.datetime.now():
+        birthday_day_before_date = birthday_day_before_date.replace(year=birthday_day_before_date.year + 1)
+    
+    try:
+        scheduler.add_job(
+            functools.partial(send_remind_day_before, chat_id=message.chat.id, person=person), 
+            DateTrigger(run_date=birthday_day_before_date)
+        )
+        await message.answer(f'Напоминание установлено!')
+    except Exception as e:
+        await message.answer(f'Ошибка установки напоминания: {str(e)}')
+
+    scheduler.start()
+
+@router.message()
+async def send_remind_day_before(chat_id, person):
+    person = await process_people()
+    await bot.send_message(chat_id, f'Завтра день рождения у {person[0]}!')
+
+@router.message(Command('setremind'))
+async def start_reminder(message:Message):
+    await set_remind(message)
+    await set_remind_week_before(message)
+    await set_remind_day_before(message)
+
+    scheduler.start()
+
+@router.message(Command('listreminds'))
+async def list_reminds(message:Message):
+    jobs = scheduler.get_jobs()
+    if not jobs:
+        await message.answer("Нет установленных напоминаний.")
+    else:
+        reminders = []
+        for job in jobs:
+            run_date = job.trigger.run_date.strftime('%Y-%m-%d %H:%M:%S')
+            reminder = f'ID напоминания{job.id}:{run_date}'
+            reminders.append(reminder)
+        await message.answer('\n'.join(reminders))
+
+        scheduler.start()
+
+
+# #Напоминание за неделю до дня рождения
+
+# async def remind_week_before(chat_id, person):
+#     await bot.send_message(chat_id, f'Через неделю день рождения у {person.name}! Не забудьте купить подарок)')
+
+# async def set_remind_week_before(message: Message, session, chat_id):
+#     for person in await get_people_info(session, user_id=message.from_user.id):
+#         birthday_str = f"{person.date}.{datetime.datetime.now().year}"
+#         birthday_week_before_date = datetime.datetime.strptime(birthday_str, "%d.%m.%Y")-timedelta(weeks=1)
+
+#         if birthday_week_before_date < datetime.datetime.now():
+#             birthday_week_before_date = birthday_week_before_date.replace(year=birthday_week_before_date.year + 1)
+        
+#         try:
+#             scheduler.add_job(
+#                 remind_week_before,
+#                 DateTrigger(run_date=birthday_week_before_date),
+#                 args=[chat_id, person],
+#             )
+#             await message.answer(f'Напоминание за неделю до дня рождения {person.name} установлено!')
+#         except Exception as e:
+#             await message.answer(f'Ошибка установки напоминания: {str(e)}')
+    
+# #Напоминание за день до дня рождения
+
+# async def send_remind_day_before(chat_id, person):
+#     await bot.send_message(chat_id, f'Завтра день рождения у {person.name}!')
+
+# async def set_remind_day_before(message: Message, session, chat_id):
+#     for person in await get_people_info(session, user_id=message.from_user.id):
+#         birthday_str = f"{person.date}.{datetime.datetime.now().year}"
+#         birthday_day_before_date = datetime.datetime.strptime(birthday_str, "%d.%m.%Y")-timedelta(days=1)
+
+#         if birthday_day_before_date < datetime.datetime.now():
+#             birthday_day_before_date = birthday_day_before_date.replace(year=birthday_day_before_date.year + 1)
+        
+#         try:
+#             scheduler.add_job(
+#                 send_remind_day_before,
+#                 DateTrigger(run_date=birthday_day_before_date),
+#                 args=[chat_id, person],
+#             )
+#             await message.answer(f'Напоминание за день до дня рождения {person.name} установлено!')
+#         except Exception as e:
+#             await message.answer(f'Ошибка установки напоминания: {str(e)}')
